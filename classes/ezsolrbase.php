@@ -635,4 +635,46 @@ class eZSolrBase
         }
     }
 
+    /** extra perf. measuring stuff */
+
+    protected function accumulatorStart( $val, $group = false, $label = false, $data = null )
+    {
+        if( class_exists( 'eZPerfLogger' ) )
+        {
+            eZPerfLogger::accumulatorStart( $val, $group, $label, $data );
+        }
+        else
+        {
+            eZDebug::accumulatorStart( $val, $group, $label );
+        }
+    }
+
+    protected function accumulatorStop( $val )
+    {
+        if( class_exists( 'eZPerfLogger' ) )
+        {
+            eZPerfLogger::accumulatorStop( $val );
+        }
+        else
+        {
+            eZDebug::accumulatorStop( $val );
+        }
+    }
+
+    static public function measure()
+    {
+        return eZPerfLoggerGenericTracer::StdKPIsFromAccumulators( array(
+                'solr_requests'
+            ),  eZPerfLogger::TimeAccumulatorList()
+        );
+    }
+
+    public static function supportedVariables()
+    {
+        return array(
+            'solr_requests' => 'integer',
+            'solr_requests_t' => 'float (secs, rounded to msec)',
+            'solr_requests_tmax' => 'float (secs, rounded to msec)',
+        );
+    }
 }

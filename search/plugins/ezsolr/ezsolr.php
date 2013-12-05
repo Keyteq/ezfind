@@ -921,7 +921,7 @@ class eZSolr implements ezpSearchEngine
     function search( $searchText, $params = array(), $searchTypes = array() )
     {
         eZDebug::createAccumulator( 'Search', 'eZ Find' );
-        eZDebug::accumulatorStart( 'Search' );
+        self::accumulatorStart( 'Search' );
         $error = 'Server not running';
 
         $asObjects = isset( $params['AsObjects'] ) ? $params['AsObjects'] : true;
@@ -970,20 +970,20 @@ class eZSolr implements ezpSearchEngine
         else
         {
             eZDebug::createAccumulator( 'Query build', 'eZ Find' );
-            eZDebug::accumulatorStart( 'Query build' );
+            self::accumulatorStart( 'Query build' );
             $queryBuilder = new ezfeZPSolrQueryBuilder( $this );
             $queryParams = $queryBuilder->buildSearch( $searchText, $params, $searchTypes );
             if ( !$shardQueryPart == null )
             {
                 $queryParams = array_merge( $shardQueryPart, $queryParams );
             }
-            eZDebug::accumulatorStop( 'Query build' );
+            self::accumulatorStop( 'Query build' );
             eZDebugSetting::writeDebug( 'extension-ezfind-query', $queryParams, 'Final query parameters sent to Solr backend' );
 
             eZDebug::createAccumulator( 'Engine time', 'eZ Find' );
-            eZDebug::accumulatorStart( 'Engine time' );
+            self::accumulatorStart( 'Engine time' );
             $resultArray = $coreToUse->rawSearch( $queryParams );
-            eZDebug::accumulatorStop( 'Engine time' );
+            self::accumulatorStop( 'Engine time' );
         }
 
         if ( $resultArray )
@@ -994,7 +994,7 @@ class eZSolr implements ezpSearchEngine
             );
 
             $stopWordArray = array();
-            eZDebug::accumulatorStop( 'Search' );
+            self::accumulatorStop( 'Search' );
             return array(
                 'SearchResult' => $objectRes,
                 'SearchCount' => $searchCount,
@@ -1004,7 +1004,7 @@ class eZSolr implements ezpSearchEngine
         }
         else
         {
-            eZDebug::accumulatorStop( 'Search' );
+            self::accumulatorStop( 'Search' );
             return array(
                 'SearchResult' => false,
                 'SearchCount' => 0,
@@ -1029,7 +1029,7 @@ class eZSolr implements ezpSearchEngine
     function moreLikeThis( $queryType, $queryValue, $params = array() )
     {
         eZDebug::createAccumulator( 'MoreLikeThis', 'eZ Find' );
-        eZDebug::accumulatorStart( 'MoreLikeThis' );
+        self::accumulatorStart( 'MoreLikeThis' );
         $error = 'Server not running';
 
         $asObjects = isset( $params['AsObjects'] ) ? $params['AsObjects'] : true;
@@ -1060,15 +1060,15 @@ class eZSolr implements ezpSearchEngine
         else
         {
             eZDebug::createAccumulator( 'Query build', 'eZ Find' );
-            eZDebug::accumulatorStart( 'Query build' );
+            self::accumulatorStart( 'Query build' );
             $queryBuilder = new ezfeZPSolrQueryBuilder( $this );
             $queryParams = $queryBuilder->buildMoreLikeThis( $queryType, $queryValue, $params );
-            eZDebug::accumulatorStop( 'Query build' );
+            self::accumulatorStop( 'Query build' );
 
             eZDebug::createAccumulator( 'Engine time', 'eZ Find' );
-            eZDebug::accumulatorStart( 'Engine time' );
+            self::accumulatorStart( 'Engine time' );
             $resultArray = $coreToUse->rawSolrRequest( '/mlt', $queryParams );
-            eZDebug::accumulatorStop( 'Engine time' );
+            self::accumulatorStop( 'Engine time' );
         }
 
         if ( $resultArray )
@@ -1554,7 +1554,7 @@ class eZSolr implements ezpSearchEngine
                     foreach ( $doc as $fieldName => $fieldValue )
                     {
                         // check if field is not in the explicit field list, to keep explode from generating notices.
-                        if ( strpos( $fieldName, '_' ) !== false && !in_array($fieldName, $fieldsToReturn) )
+                        if ( strpos( $fieldName, '_' ) !== false )
                         {
                             list( $prefix, $rest ) = explode( '_', $fieldName, 2 );
                             // get the identifier for meta, binary fields
@@ -1710,8 +1710,61 @@ class eZSolr implements ezpSearchEngine
     public static $fieldTypeContexts = array( 'search' => 'DatatypeMap', 'facet' => 'DatatypeMapFacet', 'sort' => 'DatatypeMapSort', 'filter' => 'DatatypeMapFilter' );
 
     const PENDING_ACTION_INDEX_SUBTREE = 'index_subtree';
+
+    /** extra perf. measuring stuff */
+
+    protected function accumulatorStart( $val, $group = false, $label = false, $data = null )
+    {
+        if( class_exists( 'eZPerfLogger' ) )
+        {
+            eZPerfLogger::accumulatorStart( str_replace( ' ', '_', $val ), $group, $label, $data );
+        }
+        else
+        {
+            eZDebug::accumulatorStart( $val, $group, $label );
+        }
+    }
+
+    protected function accumulatorStop( $val )
+    {
+        if( class_exists( 'eZPerfLogger' ) )
+        {
+            eZPerfLogger::accumulatorStop( str_replace( ' ', '_', $val ) );
+        }
+        else
+        {
+            eZDebug::accumulatorStop( $val );
+        }
+    }
+
+    static public function measure()
+    {
+        return eZPerfLoggerGenericTracer::StdKPIsFromAccumulators( array(
+                'solr_requests'
+            ),  eZPerfLogger::TimeAccumulatorList()
+        );
+    }
+
+    public static function supportedVariables()
+    {
+        return array(
+            'Search' => 'integer',
+            'Search_t' => 'float (secs, rounded to msec)',
+            'Search_tmax' => 'float (secs, rounded to msec)',
+            'Query_build' => 'integer',
+            'Query_build_t' => 'float (secs, rounded to msec)',
+            'Query_build_tmax' => 'float (secs, rounded to msec)',
+            'Engine_time' => 'integer',
+            'Engine_time_t' => 'float (secs, rounded to msec)',
+            'Engine_time_tmax' => 'float (secs, rounded to msec)',
+            'MoreLikeThis' => 'integer',
+            'MoreLikeThis' => 'float (secs, rounded to msec)',
+            'MoreLikeThis' => 'float (secs, rounded to msec)',
+        );
+    }
 }
 
 eZSolr::$SolrDocumentFieldName = new ezfSolrDocumentFieldName();
+
 
 ?>
