@@ -1740,7 +1740,7 @@ class eZSolr implements ezpSearchEngine
     static public function measure()
     {
         return eZPerfLoggerGenericTracer::StdKPIsFromAccumulators( array(
-                'solr_requests'
+                'Search', 'Query_build', 'Engine_time', 'MoreLikeThis'
             ),  eZPerfLogger::TimeAccumulatorList()
         );
     }
