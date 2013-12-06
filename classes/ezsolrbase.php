@@ -444,13 +444,16 @@ class eZSolrBase
             $maxRetries = 1;
         }
 
+        $this->accumulatorStart( 'solr_requests', 'eZ Find' );
         $tries = 0;
         while ( $tries < $maxRetries )
         {
             try
             {
                 $tries++;
-                return $this->sendHTTPRequest( $url, $postData, $contentType, $userAgent );
+                $out = $this->sendHTTPRequest( $url, $postData, $contentType, $userAgent );
+                $this->accumulatorStop( 'solr_requests' );
+                return $out;
             }
             catch ( ezfSolrException $e )
             {
@@ -470,6 +473,7 @@ class eZSolrBase
             }
         }
 
+        $this->accumulatorStop( 'solr_requests' );
         return false;
     }
 
