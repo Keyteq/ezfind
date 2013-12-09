@@ -1554,7 +1554,7 @@ class eZSolr implements ezpSearchEngine
                     foreach ( $doc as $fieldName => $fieldValue )
                     {
                         // check if field is not in the explicit field list, to keep explode from generating notices.
-                        if ( strpos( $fieldName, '_' ) !== false )
+                        if ( strpos( $fieldName, '_' ) !== false && !in_array($fieldName, $fieldsToReturn) )
                         {
                             list( $prefix, $rest ) = explode( '_', $fieldName, 2 );
                             // get the identifier for meta, binary fields
